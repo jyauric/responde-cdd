@@ -179,3 +179,8 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# --- responde-cdd: secretos y credenciales (nunca subir) ---
+.streamlit/secrets.toml
+credentials*.json
+service_account*.json
+*-service-account*.json
