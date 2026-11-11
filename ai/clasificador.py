@@ -66,7 +66,9 @@ REGLAS
 6. Ampliaciones o prórrogas de plazo: la norma solo contempla el caso excepcional del numeral 6.5 literal h
    (interrupción de la plataforma o sistema el último día de cumplimiento). Explica eso si aparece en los fragmentos,
    pero marca la consulta como no cubierta: cada caso lo evalúa el especialista del indicador.
-7. Cita solo los IDs de fragmentos que realmente usaste. Escribe en español, claro y breve.
+7. Los fragmentos "Respuesta validada por el equipo de CdD" son respuestas que un especialista ya dio a una
+   consulta igual o parecida: úsalos y cítalos como fuente válida. Si contradicen la norma, prevalece la norma.
+8. Cita solo los IDs de fragmentos que realmente usaste. Escribe en español, claro y breve.
 
 DERIVACIÓN
 Especialistas por indicador:
@@ -105,9 +107,10 @@ def generar(consulta: str, fragmentos: list, c) -> Clasificacion:
     raise RuntimeError(f"Gemini no respondió: {ultimo_error}")
 
 
-def responder(consulta: str, k: int = 8) -> dict:
+def responder(consulta: str, k: int = 8, aprendidas: list = None) -> dict:
+    """aprendidas: filas de la hoja 'consultas' ya validadas por especialistas (sheets.aprendidas())."""
     c = rag.cliente()
-    fragmentos = rag.buscar(consulta, k=k, c=c)
+    fragmentos = rag.buscar(consulta, k=k, c=c, aprendidas=rag.fragmentos_aprendidos(aprendidas or [], c))
     r = generar(consulta, fragmentos, c)
     por_id = {f["id"]: f for f in fragmentos}
     citas = [por_id[i] for i in r.fragmentos_citados if i in por_id]  # descarta IDs inventados
@@ -142,6 +145,7 @@ def responder(consulta: str, k: int = 8) -> dict:
                    "pagina": f["pagina"], "pagina_fin": f.get("pagina_fin") or f["pagina"],
                    "impresa": f["impresa"]} for f in citas],
         "modelo": getattr(r, "_modelo", None),
+        "uso_respuesta_equipo": any(f["archivo"] == "base_equipo" for f in citas),
     }
 
 

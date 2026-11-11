@@ -251,10 +251,41 @@ def _lexico(consulta: str, fragmentos: list) -> np.ndarray:
     return s / s.max() if s.max() > 0 else s
 
 
-def buscar(consulta: str, k: int = 8, c: genai.Client = None) -> list:
-    """Devuelve los k fragmentos más relevantes (búsqueda híbrida con diversidad), con su puntaje."""
+UMBRAL_APRENDIDA = 0.80   # similitud mínima para usar una respuesta validada por el equipo
+_vectores_aprendidas = {}
+
+
+def fragmentos_aprendidos(filas: list, c: genai.Client) -> list:
+    """Convierte respuestas validadas por especialistas (hoja 'consultas') en fragmentos con vector.
+    Los vectores se guardan en memoria para no recalcularlos en cada consulta."""
+    salida = []
+    nuevas = [f for f in filas if f["consulta"] not in _vectores_aprendidas]
+    if nuevas:
+        vs = embeddings([f"{f['consulta']}\n{f['respuesta_especialista']}" for f in nuevas], "RETRIEVAL_DOCUMENT", c)
+        _vectores_aprendidas.update({f["consulta"]: v for f, v in zip(nuevas, vs)})
+    for f in filas:
+        salida.append({
+            "id": 100000 + int(f["id"]), "archivo": "base_equipo", "url": "",
+            "documento": "Respuesta validada por el equipo de CdD",
+            "seccion": f"consulta N° {f['id']} · {f['destino']} · {str(f['fecha_respuesta'])[:10]}",
+            "indicador": str(f["indicador"]) or None, "pagina": None, "impresa": None,
+            "texto": f"Consulta: {f['consulta']}\nRespuesta del especialista: {f['respuesta_especialista']}",
+            "vector": _vectores_aprendidas[f["consulta"]],
+        })
+    return salida
+
+
+def buscar(consulta: str, k: int = 8, c: genai.Client = None, aprendidas: list = None) -> list:
+    """Devuelve los k fragmentos más relevantes (búsqueda híbrida con diversidad), con su puntaje.
+    Si se pasan respuestas aprendidas (fragmentos_aprendidos), las más parecidas van primero."""
     fragmentos, vectores = cargar_indice()
     q = embeddings([consulta], "RETRIEVAL_QUERY", c or cliente())[0]
+    extra = []
+    for f in aprendidas or []:
+        puntaje = float(f["vector"] @ q)
+        if puntaje >= UMBRAL_APRENDIDA:
+            extra.append({**{x: y for x, y in f.items() if x != "vector"}, "puntaje": puntaje})
+    extra = sorted(extra, key=lambda f: -f["puntaje"])[:2]
     puntajes = (1 - PESO_LEXICO) * (vectores @ q) + PESO_LEXICO * _lexico(consulta, fragmentos)
     # Si la consulta menciona un indicador (p. ej. "3.1"), se favorece su ficha técnica.
     mencionados = set(re.findall(r"\b(\d{1,2}\.\d)\b", consulta))
@@ -275,7 +306,7 @@ def buscar(consulta: str, k: int = 8, c: genai.Client = None) -> list:
         elegidos.append(i)
         if len(elegidos) == k:
             break
-    return [{**fragmentos[i], "puntaje": float(puntajes[i])} for i in elegidos]
+    return extra + [{**fragmentos[i], "puntaje": float(puntajes[i])} for i in elegidos]
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ import streamlit as st
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "ai"))
+sys.path.insert(0, str(RAIZ / "backend"))
 
 # En Streamlit Community Cloud la clave viene de st.secrets; en local, del archivo .env.
 try:
@@ -22,6 +23,7 @@ except FileNotFoundError:
 
 from catalogo import EQUIPOS, ESPECIALISTAS  # noqa: E402
 import clasificador  # noqa: E402
+import sheets  # noqa: E402
 
 st.set_page_config(page_title="responde-cdd", page_icon="📘", layout="wide")
 
@@ -46,6 +48,30 @@ def imagen_pagina(archivo: str, pagina: int) -> bytes:
     with pymupdf.open(RAIZ / "data" / "normas" / archivo) as doc:
         return doc[pagina - 1].get_pixmap(dpi=110).tobytes("png")
 
+
+@st.cache_data(ttl=60, show_spinner=False)
+def respuestas_del_equipo() -> list:
+    """Respuestas validadas por especialistas (hoja 'consultas'); vacío si Sheets no está configurado."""
+    try:
+        return sheets.aprendidas()
+    except Exception:
+        return []
+
+
+# ---------------------------------------------------------------- Barra lateral: equipo de CdD
+with st.sidebar:
+    st.header("Equipo de CdD")
+    st.write("Las consultas pendientes se registran en la hoja de Google Sheets del equipo. "
+             "Cuando un especialista escribe su respuesta y marca **Respondido**, se incorpora a la base "
+             "de conocimiento y la próxima consulta parecida se responde sola.")
+    if st.button("Incorporar respuestas de especialistas", use_container_width=True):
+        try:
+            nuevas = sheets.incorporar_respondidas()
+            respuestas_del_equipo.clear()
+            st.success(f"Incorporadas: {len(nuevas)}")
+        except Exception as e:
+            st.error(f"No se pudo leer la hoja: {e}")
+    st.caption(f"Respuestas del equipo en la base: {len(respuestas_del_equipo())}")
 
 # ---------------------------------------------------------------- Interfaz
 st.title("📘 responde-cdd")
@@ -72,11 +98,16 @@ consulta = st.text_area("Pega aquí el texto de la consulta", key="consulta", he
 if st.button("Procesar consulta", type="primary", disabled=not consulta.strip()):
     with st.spinner("Buscando en la norma y redactando la respuesta…"):
         try:
-            r = clasificador.responder(consulta.strip())
+            r = clasificador.responder(consulta.strip(), aprendidas=respuestas_del_equipo())
         except Exception as e:  # p. ej. límite del plan gratuito de Gemini
             st.error(f"No se pudo procesar la consulta: {e}")
             st.stop()
     r["canal"], r["fecha"] = canal, datetime.now().strftime("%d/%m/%Y %H:%M")
+    try:
+        r["registro"] = sheets.registrar(r, canal)
+    except Exception as e:
+        r["registro"] = None
+        st.caption(f"⚠️ No se registró en Google Sheets: {e}")
     st.session_state.historial.insert(0, r)
 
 if st.session_state.historial:
@@ -87,6 +118,11 @@ if st.session_state.historial:
         st.success(f"**{r['estado']}** · Tema: {nombre_destino(r['destino'])}")
     else:
         st.warning(f"**{r['estado']}** · Derivar a: {nombre_destino(r['destino'])}")
+
+    if r.get("registro"):
+        st.caption(f"Registrada en la hoja del equipo como consulta N° {r['registro']}.")
+    if r.get("uso_respuesta_equipo"):
+        st.info("🧠 Esta respuesta usa una respuesta ya validada por un especialista del equipo.")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("IGED", r["iged"] or "No indicada")
@@ -103,7 +139,7 @@ if st.session_state.historial:
         for i, c in enumerate(r["citas"]):
             es_pdf = c["archivo"].endswith(".pdf")
             enlace = f"{c['url']}#page={c['pagina']}" if es_pdf else c["url"]
-            st.markdown(f"- {c['etiqueta']} · [abrir fuente oficial]({enlace})")
+            st.markdown(f"- {c['etiqueta']}" + (f" · [abrir fuente oficial]({enlace})" if enlace else ""))
             if es_pdf:
                 paginas = list(range(c["pagina"], c.get("pagina_fin", c["pagina"]) + 1))[:3]
                 with st.expander("Ver página citada" if len(paginas) == 1 else f"Ver las {len(paginas)} páginas citadas"):
