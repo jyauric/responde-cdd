@@ -36,10 +36,28 @@ def anexo1() -> dict:
         if len(celdas) == 4 and celdas[3].startswith(("DRE", "GRE", "UGEL")) and celdas[2] not in ("NOMBRE DE ENTIDAD",):
             igeds[clave(celdas[2])] = re.sub(r"<[^>]+>", " ", celdas[2]).strip()
             REGIONES.add(clave(celdas[0]))
+            REGION_DE[clave(celdas[2])] = celdas[0].title()
     return igeds
 
 
 REGIONES = set()
+REGION_DE = {}
+
+
+def region_de(iged: str) -> str:
+    """Región de una IGED según el Anexo N° 1 ('' si no se reconoce)."""
+    if not iged:
+        return ""
+    anexo1()
+    k = clave(iged)
+    if k not in REGION_DE:
+        # Nombres que existen en más de una región ("UGEL La Unión": Arequipa y Piura) quedan sin región.
+        empiezan = [x for x in REGION_DE if x.startswith(k)]
+        if len(empiezan) > 1:
+            return ""
+        cercano = empiezan or difflib.get_close_matches(k, REGION_DE.keys(), n=1, cutoff=0.9)
+        k = cercano[0] if cercano else k
+    return REGION_DE.get(k, "")
 
 
 def emparejar(k: str, region: str = ""):

@@ -3,6 +3,7 @@
 Hoja "consultas": una fila por consulta. El especialista escribe su respuesta en "respuesta_especialista"
 y cambia "estado" a "Respondido". La app la incorpora a la base de conocimiento y marca "en_base" = "Sí".
 Hoja "equipos": a quién se deriva cada tema (especialistas ficticios para el demo).
+La columna "region" se completa sola con el Anexo N° 1 según la IGED que consulta.
 
 Credenciales (cuenta de servicio de Google):
   - local: GOOGLE_SERVICE_ACCOUNT_FILE (ruta al JSON) y GOOGLE_SHEET_ID en .env
@@ -20,8 +21,9 @@ from dotenv import load_dotenv
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "ai"))
 from catalogo import EQUIPOS, ESPECIALISTAS  # noqa: E402
+from participacion import region_de  # noqa: E402
 
-COLUMNAS = ["id", "fecha", "canal", "iged", "consulta", "tema", "destino", "indicador", "estado",
+COLUMNAS = ["id", "fecha", "canal", "iged", "region", "consulta", "tema", "destino", "indicador", "estado",
             "confianza", "respuesta_ia", "citas", "respuesta_especialista", "fecha_respuesta", "en_base"]
 ESTADOS = ["Respondida automáticamente", "Pendiente por validar", "Respondido"]
 
@@ -56,6 +58,13 @@ def preparar() -> None:
         ws = lb.add_worksheet("consultas", rows=500, cols=len(COLUMNAS))
         ws.append_row(COLUMNAS)
         ws.freeze(rows=1)
+    else:  # migración: hojas creadas antes de agregar la columna "region"
+        ws = lb.worksheet("consultas")
+        encabezado = ws.row_values(1)
+        if "region" not in encabezado:
+            col = encabezado.index("iged") + 2
+            igeds = ws.col_values(col - 1)[1:]
+            ws.insert_cols([["region"] + [region_de(i) for i in igeds]], col=col)
     if "equipos" not in nombres:
         ws = lb.add_worksheet("equipos", rows=30, cols=3)
         filas = [["destino", "nombre (ficticio)", "atiende"]]
@@ -72,7 +81,8 @@ def registrar(r: dict, canal: str) -> int:
     ws = libro().worksheet("consultas")
     nuevo_id = len(ws.col_values(1))  # la fila 1 es el encabezado
     citas = " | ".join(c["etiqueta"] for c in r["citas"])
-    ws.append_row([nuevo_id, datetime.now().strftime("%Y-%m-%d %H:%M"), canal, r["iged"] or "", r["consulta"],
+    ws.append_row([nuevo_id, datetime.now().strftime("%Y-%m-%d %H:%M"), canal, r["iged"] or "",
+                   region_de(r["iged"]), r["consulta"],
                    r["tema"], r["destino"], r["indicador"] or "", r["estado"], round(r["confianza"], 2),
                    r["respuesta"], citas, "", "", ""], value_input_option="USER_ENTERED")
     return nuevo_id
