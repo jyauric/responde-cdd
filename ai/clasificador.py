@@ -7,8 +7,10 @@ Regla de respuesta (D8), aplicada en código y no por el modelo:
   (b) cita al menos un fragmento y (c) la confianza es >= UMBRAL. Si no -> "Pendiente por validar".
 """
 import json
+import re
 import sys
 import time
+from datetime import date
 from pathlib import Path
 from typing import List, Literal, Optional
 
@@ -45,6 +47,7 @@ def instrucciones() -> str:
     equipos = "\n".join(f"- {k}: {v}" for k, v in EQUIPOS.items())
     compromisos = "\n".join(f"- {n}. {t}" for n, t in COMPROMISOS.items())
     tramos = "\n".join(f"- {i}: Tramo " + " y ".join(map(str, t)) for i, t in TRAMOS.items())
+    hoy = date.today().strftime("%d/%m/%Y")
     return f"""Eres el asistente del equipo de Compromisos de Desempeño (CdD) 2026. Respondes consultas de DRE/GRE y UGEL.
 
 REGLAS
@@ -66,9 +69,16 @@ REGLAS
 6. Ampliaciones o prórrogas de plazo: la norma solo contempla el caso excepcional del numeral 6.5 literal h
    (interrupción de la plataforma o sistema el último día de cumplimiento). Explica eso si aparece en los fragmentos,
    pero marca la consulta como no cubierta: cada caso lo evalúa el especialista del indicador.
-7. Los fragmentos "Respuesta validada por el equipo de CdD" son respuestas que un especialista ya dio a una
+7. FECHAS: hoy es {hoy}. Si un plazo o fecha ya pasó, redacta en pasado ("el plazo venció el…", "debía remitirse
+   hasta el…"); si aún no llega, en futuro.
+8. ASISTENCIAS TÉCNICAS: la respuesta validada por el equipo sobre asistencias técnicas aplica a TODOS los
+   indicadores (la evaluación de CdD 2026 ya culminó); úsala y cítala aunque mencione otro indicador.
+9. FICHAS TÉCNICAS: al explicar condiciones de una ficha, usa su misma redacción; no agregues matices que la
+   ficha no dice.
+10. DESTINO: ponderadores, metas, MMA, cálculo de la transferencia, Anexos 1, 5, 6, 7 y 8 → DATOS.
+11. Los fragmentos "Respuesta validada por el equipo de CdD" son respuestas que un especialista ya dio a una
    consulta igual o parecida: úsalos y cítalos como fuente válida. Si contradicen la norma, prevalece la norma.
-8. Cita solo los IDs de fragmentos que realmente usaste. Escribe en español, claro y breve.
+12. Cita solo los IDs de fragmentos que realmente usaste. Escribe en español, claro y breve.
 
 DERIVACIÓN
 Especialistas por indicador:
@@ -84,9 +94,9 @@ TRAMOS (Anexo N° 3: en qué tramo se evalúa cada indicador)
 {tramos}"""
 
 
-def generar(consulta: str, fragmentos: list, c) -> Clasificacion:
+def generar(consulta: str, fragmentos: list, c, dato_verificado: str = "") -> Clasificacion:
     contexto = "\n\n".join(f"[ID {f['id']}] {rag.etiqueta(f)}\n{f['texto']}" for f in fragmentos)
-    contenido = f"FRAGMENTOS:\n{contexto}\n\nCONSULTA:\n{consulta}"
+    contenido = f"FRAGMENTOS:\n{contexto}\n\n{dato_verificado}CONSULTA:\n{consulta}"
     config = types.GenerateContentConfig(
         system_instruction=instrucciones(), temperature=0.2,
         response_mime_type="application/json", response_schema=Clasificacion,
@@ -111,34 +121,54 @@ def responder(consulta: str, k: int = 8, aprendidas: list = None) -> dict:
     """aprendidas: filas de la hoja 'consultas' ya validadas por especialistas (sheets.aprendidas())."""
     c = rag.cliente()
     fragmentos = rag.buscar(consulta, k=k, c=c, aprendidas=rag.fragmentos_aprendidos(aprendidas or [], c))
-    r = generar(consulta, fragmentos, c)
+
+    # D26/D29: participación verificada en código (Anexo 1 vs resultados publicados), antes de llamar al modelo.
+    iged = participacion.detectar_iged(consulta)
+    no_participa = iged is not None and participacion.participa(iged) is False
+    region = participacion.region_de(iged) if iged else ""
+    ugel_region = participacion.ugel_participantes(region) if no_participa and iged.startswith(("DRE", "GRE")) else []
+    dato = ""
+    if ugel_region:
+        dato = (f"DATO VERIFICADO: la {iged} no participa en CdD 2026, pero en su región ({region}) participan "
+                f"{len(ugel_region)} UGEL: {', '.join(ugel_region)}. Como la DRE/GRE supervisa a sus UGEL, responde "
+                "la consulta con información general útil para su región (sin repetir lo de la no participación).\n\n")
+
+    r = generar(consulta, fragmentos, c, dato)
     por_id = {f["id"]: f for f in fragmentos}
     citas = [por_id[i] for i in r.fragmentos_citados if i in por_id]  # descarta IDs inventados
     # El destino de un indicador se corrige con el catálogo si el modelo eligió otro especialista.
     destino = r.destino
     if r.indicador and especialista_de(r.indicador) and destino in ESPECIALISTAS:
         destino = especialista_de(r.indicador)
+    if not r.indicador and any(re.match(r"Anexo N° [15678]\b", f["seccion"]) for f in citas):
+        destino = "DATOS"  # D19: Anexos 1, 5, 6, 7 y 8 los ve el equipo de Datos
+    # D30: asistencia técnica → especialista del indicador si lo menciona; si no, Comunicaciones.
+    if re.search(r"asistencia[s]? t[ée]cnica|capacitaci[óo]n", consulta, re.I):
+        destino = especialista_de(r.indicador) if r.indicador and especialista_de(r.indicador) else "COMUNICACIONES"
     automatica = r.cubierto_totalmente and len(citas) > 0 and r.confianza >= UMBRAL
     respuesta, falta, cubierto, confianza = r.respuesta, r.falta, r.cubierto_totalmente, r.confianza
 
-    # D26: si la IGED está en el Anexo N° 1 pero no tiene resultados publicados, no participa.
-    # Se decide en código (no por el modelo) y se cita el numeral 6.10 b y la página de resultados.
-    if participacion.participa(r.iged) is False:
+    if no_participa:
         todos, _ = rag.cargar_indice()
         req = next(f for f in todos if "requisito para su participación" in f["texto"])
-        res = next((f for f in todos if f["archivo"].startswith("Resultados")), None)
-        citas = [req] + ([res] if res else [])
-        respuesta = (f"La {r.iged} no participa en los Compromisos de Desempeño 2026: no figura entre las IGED con "
-                     "resultados publicados porque no cumplió el requisito del numeral 6.10, literal b, de la Norma "
-                     "Técnica, que establece que la designación del representante de la IGED (mediante Resolución "
-                     "de su Titular, remitida a la UFD dentro de los quince días hábiles posteriores a la publicación "
-                     "de la norma) es requisito para su participación en el mecanismo.")
-        falta, cubierto, confianza, automatica, destino = None, True, 1.0, True, "DATOS"
+        aviso = (f"La {iged} no participa en los Compromisos de Desempeño 2026: no figura entre las IGED con "
+                 "resultados publicados porque no cumplió el requisito del numeral 6.10, literal b, de la Norma "
+                 "Técnica (designar a su representante mediante Resolución de su Titular, remitida a la UFD dentro "
+                 "de los quince días hábiles posteriores a la publicación de la norma).")
+        # D29: destino = especialista del indicador mencionado; si no hay indicador, equipo de Implementación.
+        destino = especialista_de(r.indicador) if r.indicador and especialista_de(r.indicador) else "IMPLEMENTACION"
+        if ugel_region:  # DRE/GRE: aviso + respuesta general para su región
+            respuesta = aviso + f"\n\nPara su región ({region}), donde participan {len(ugel_region)} UGEL: " + r.respuesta
+            citas = [req] + [f for f in citas if f is not req]
+        else:  # UGEL que no participa: solo el aviso
+            respuesta, falta, cubierto, confianza, automatica = aviso, None, True, 1.0, True
+            res = next((f for f in todos if f["archivo"].startswith("Resultados")), None)
+            citas = [req] + ([res] if res else [])
 
     return {
         "consulta": consulta,
         "estado": "Respondida automáticamente" if automatica else "Pendiente por validar",
-        "destino": destino, "indicador": r.indicador, "iged": r.iged, "tema": r.tema,
+        "destino": destino, "indicador": r.indicador, "iged": iged or r.iged, "tema": r.tema,
         "cubierto_totalmente": cubierto, "confianza": confianza,
         "respuesta": respuesta, "falta": falta,
         "citas": [{"etiqueta": rag.etiqueta(f), "archivo": f["archivo"], "url": f["url"],

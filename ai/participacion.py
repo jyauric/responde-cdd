@@ -105,3 +105,32 @@ if __name__ == "__main__":
     print("Nombres publicados sin emparejar:", sorted(k for k in publicadas() if k.startswith("SIN_EMPAREJAR")))
     for nombre in ["DRE Cusco", "UGEL Cusco", "UGEL Espinar", "UGEL Bagua", "GRE La Libertad", "UGEL Inventada"]:
         print(f"{nombre}: {participa(nombre)}")
+
+
+def _plano(texto: str) -> str:
+    texto = unicodedata.normalize("NFKD", re.sub(r"<[^>]+>", " ", texto)).encode("ascii", "ignore").decode().upper()
+    return " " + " ".join(re.sub(r"[^A-Z0-9]", " ", texto).split()) + " "
+
+
+def detectar_iged(texto: str):
+    """Busca en el texto de la consulta el nombre de una IGED del Anexo N° 1 (el más largo que coincida).
+    Si un nombre existe en varias regiones ("UGEL La Unión"), usa la región mencionada; si no hay, no adivina."""
+    plano = _plano(texto).replace(" GRE ", " DRE ")
+    completos, base = [], []
+    for k, nombre in anexo1().items():
+        if _plano(nombre).replace(" GRE ", " DRE ") in plano:
+            completos.append(nombre)
+        elif _plano(re.sub(r"\s*-\s*[A-ZÁÉÍÓÚ ]+$", "", nombre)) in plano:
+            base.append((nombre, REGION_DE.get(k, "")))
+    if completos:
+        return max(completos, key=len)
+    if len(base) > 1:
+        base = [(n, r) for n, r in base if _plano(r) in plano]
+    return base[0][0] if len(base) == 1 else None
+
+
+def ugel_participantes(region: str) -> list:
+    """UGEL de una región que sí tienen resultados publicados."""
+    anexo1()
+    return [n for k, n in anexo1().items()
+            if REGION_DE.get(k) == region and n.startswith("UGEL") and k in publicadas()]

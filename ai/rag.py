@@ -230,6 +230,7 @@ def cargar_indice():
 
 
 PESO_LEXICO = 0.2         # búsqueda híbrida: 80 % significado (embeddings) + 20 % palabras en común
+PESO_TITULO = 0.08        # bonificación si la consulta comparte una palabra poco común con el título de la sección
 FICHA_MAX = 8            # fragmentos máximos de la ficha de un indicador mencionado
 MAX_POR_SECCION = 2       # diversidad: evita que una sola sección ocupe todos los resultados
 VACIAS = set("de la el en y a los las del que por para con se su al o un una es no lo como sus le ya este esta "
@@ -251,7 +252,7 @@ def _lexico(consulta: str, fragmentos: list) -> np.ndarray:
     return s / s.max() if s.max() > 0 else s
 
 
-UMBRAL_APRENDIDA = 0.80   # similitud mínima para usar una respuesta validada por el equipo
+UMBRAL_APRENDIDA = 0.72   # similitud mínima para usar una respuesta validada por el equipo
 _vectores_aprendidas = {}
 
 
@@ -287,6 +288,14 @@ def buscar(consulta: str, k: int = 8, c: genai.Client = None, aprendidas: list =
             extra.append({**{x: y for x, y in f.items() if x != "vector"}, "puntaje": puntaje})
     extra = sorted(extra, key=lambda f: -f["puntaje"])[:2]
     puntajes = (1 - PESO_LEXICO) * (vectores @ q) + PESO_LEXICO * _lexico(consulta, fragmentos)
+    # Si una palabra poco común de la consulta está en el título de la sección (p. ej. "ponderadores" en el
+    # Anexo N° 5), se favorece esa sección: las tablas grandes no siempre se recuperan solo por significado.
+    titulos = {f["seccion"] for f in fragmentos}
+    en_titulos = collections.Counter(w for t in titulos for w in set(_palabras(t)))
+    raras = {w for w in _palabras(consulta) if len(w) >= 6 and 0 < en_titulos[w] <= 3}
+    for i, f in enumerate(fragmentos):
+        if raras & set(_palabras(f["seccion"])):
+            puntajes[i] += PESO_TITULO
     # Si la consulta menciona un indicador (p. ej. "3.1"), se favorece su ficha técnica.
     mencionados = set(re.findall(r"\b(\d{1,2}\.\d)\b", consulta))
     for i, f in enumerate(fragmentos):
