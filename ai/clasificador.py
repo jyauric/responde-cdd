@@ -108,6 +108,9 @@ def generar(consulta: str, fragmentos: list, c, dato_verificado: str = "") -> Cl
                 r = c.models.generate_content(model=modelo, contents=contenido, config=config)
                 resultado = r.parsed or Clasificacion.model_validate_json(r.text)
                 resultado._modelo = modelo
+                u = r.usage_metadata  # tokens usados (para el costo por consulta del modelo de negocio)
+                resultado._tokens = {"entrada": u.prompt_token_count or 0, "salida": u.candidates_token_count or 0,
+                                     "razonamiento": getattr(u, "thoughts_token_count", 0) or 0}
                 return resultado
             except Exception as e:  # 429 / 503: esperar y reintentar; luego probar el modelo alternativo
                 ultimo_error = e
@@ -175,6 +178,7 @@ def responder(consulta: str, k: int = 8, aprendidas: list = None) -> dict:
                    "pagina": f["pagina"], "pagina_fin": f.get("pagina_fin") or f["pagina"],
                    "impresa": f["impresa"]} for f in citas],
         "modelo": getattr(r, "_modelo", None),
+        "tokens": getattr(r, "_tokens", None),
         "uso_respuesta_equipo": any(f["archivo"] == "base_equipo" for f in citas),
     }
 
