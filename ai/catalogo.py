@@ -44,3 +44,33 @@ INDICADORES = {
 def compromiso_de(indicador: str) -> int:
     """El compromiso es el primer número del indicador (p. ej., '6.3' -> 6)."""
     return int(indicador.split(".")[0])
+
+
+# Derivación (D17 y D19). Los especialistas son ficticios; la agrupación refleja la organización
+# descrita por la founder, en términos de la norma.
+ESPECIALISTAS = {
+    "A": ["1.1", "1.2", "1.3"],
+    "B": ["2.1", "3.3"],
+    "C": ["3.1", "3.2"],
+    "D": ["4.1", "5.1"],
+    "E": ["6.1", "6.2", "6.3"],
+    "F": ["7.1", "7.2", "7.3"],
+    "G": ["8.1", "9.2"],
+    "H": ["9.1", "10.1"],
+}
+
+EQUIPOS = {
+    "IMPLEMENTACION": "Implementación y evaluación: numerales 6.1, 6.2, 6.3 y 6.5 (proceso de evaluación), "
+                      "VII Responsabilidades, glosario y siglas, Anexo 3 (tramos y modalidad), normativa general.",
+    "DATOS": "Datos: 6.4 metas, 6.6 incentivo monetario, 6.7 cálculo de la transferencia, 6.9 implicancias del "
+             "incumplimiento del Tramo 2 (para el MMA), Anexo 1 (IGED), Anexos 5-8 (ponderadores, metas, MMA), "
+             "consolidación y publicación de resultados preliminares o finales de cada tramo, reportes intermedios.",
+    "PRESUPUESTO": "Presupuesto: 6.8 uso de los recursos y PUR (qué se puede financiar), cuándo se realiza la "
+                   "transferencia y dónde ver la normativa presupuestal que la aprueba.",
+    "COMUNICACIONES": "Comunicaciones: 6.10 asistencia técnica y atención de consultas, asistencias técnicas, "
+                      "publicaciones web, canales de consulta.",
+}
+
+
+def especialista_de(indicador: str):
+    return next((e for e, inds in ESPECIALISTAS.items() if indicador in inds), None)

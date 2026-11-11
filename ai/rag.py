@@ -7,8 +7,10 @@ Probar una búsqueda:
 
 Salida: data/indice/fragmentos.json (texto + metadatos) y data/indice/vectores.npy.
 """
+import collections
 import csv
 import json
+import math
 import os
 import re
 import sys
@@ -83,7 +85,8 @@ def fragmentar(stem: str, fuente: dict) -> list:
             fragmentos.append({
                 "archivo": fuente["archivo"], "documento": fuente["titulo"], "url": fuente["url"],
                 "seccion": seccion, "indicador": indicador,
-                "pagina": inicio[0], "impresa": inicio[1], "texto": cuerpo,
+                "pagina": inicio[0], "impresa": inicio[1],
+                "pagina_fin": pagina, "impresa_fin": impresa, "texto": cuerpo,
             })
         actual.clear()
 
@@ -144,7 +147,10 @@ def fragmentar(stem: str, fuente: dict) -> list:
 def etiqueta(f: dict) -> str:
     """Cómo se cita un fragmento (D21): documento, sección y página impresa si existe."""
     cita = f"{f['documento']} · {f['seccion']}"
-    return cita + (f" · p. {f['impresa']}" if f.get("impresa") else "")
+    if not f.get("impresa"):
+        return cita
+    fin = f.get("impresa_fin")
+    return cita + (f" · pp. {f['impresa']}-{fin}" if fin and fin != f["impresa"] else f" · p. {f['impresa']}")
 
 
 # ---------------------------------------------------------------- Embeddings
@@ -190,7 +196,18 @@ def construir() -> None:
     for i, f in enumerate(fragmentos):
         f["id"] = i
     textos = [f"{etiqueta(f)}\n\n{f['texto']}" for f in fragmentos]
-    vectores = embeddings(textos, "RETRIEVAL_DOCUMENT", cliente())
+    # Reutiliza los vectores ya calculados si el texto del fragmento no cambió (ahorra cuota).
+    previos = {}
+    if (INDICE / "fragmentos.json").exists():
+        viejos = json.loads((INDICE / "fragmentos.json").read_text(encoding="utf-8"))
+        vv = np.load(INDICE / "vectores.npy")
+        previos = {f["texto"]: vv[i] for i, f in enumerate(viejos)}
+    nuevos = [i for i, f in enumerate(fragmentos) if f["texto"] not in previos]
+    print(f"Reutilizados: {len(fragmentos) - len(nuevos)} · nuevos a calcular: {len(nuevos)}")
+    calculados = embeddings([textos[i] for i in nuevos], "RETRIEVAL_DOCUMENT", cliente()) if nuevos else []
+    mapa = dict(zip(nuevos, calculados))
+    vectores = np.array([mapa[i] if i in mapa else previos[f["texto"]] for i, f in enumerate(fragmentos)],
+                        dtype=np.float32)
     INDICE.mkdir(parents=True, exist_ok=True)
     (INDICE / "fragmentos.json").write_text(json.dumps(fragmentos, ensure_ascii=False, indent=1), encoding="utf-8")
     np.save(INDICE / "vectores.npy", vectores)
@@ -208,18 +225,47 @@ def cargar_indice():
     return _cache["fragmentos"], _cache["vectores"]
 
 
-def buscar(consulta: str, k: int = 6, c: genai.Client = None) -> list:
-    """Devuelve los k fragmentos más parecidos a la consulta, con su puntaje."""
+PESO_LEXICO = 0.2         # búsqueda híbrida: 80 % significado (embeddings) + 20 % palabras en común
+MAX_POR_SECCION = 2       # diversidad: evita que una sola sección ocupe todos los resultados
+VACIAS = set("de la el en y a los las del que por para con se su al o un una es no lo como sus le ya este esta "
+             "son ser han ha nos".split())
+
+
+def _palabras(texto: str) -> list:
+    return [w for w in re.findall(r"[a-záéíóúñü]{3,}", texto.lower()) if w not in VACIAS]
+
+
+def _lexico(consulta: str, fragmentos: list) -> np.ndarray:
+    """Puntaje TF-IDF simple: palabras de la consulta presentes en el fragmento, ponderadas por rareza."""
+    if "df" not in _cache:
+        _cache["tf"] = [collections.Counter(_palabras(f["texto"])) for f in fragmentos]
+        _cache["df"] = collections.Counter(w for tf in _cache["tf"] for w in tf)
+    n, df = len(fragmentos), _cache["df"]
+    q = set(_palabras(consulta))
+    s = np.array([sum((1 + math.log(tf[w])) * math.log(n / df[w]) for w in q if tf[w]) for tf in _cache["tf"]])
+    return s / s.max() if s.max() > 0 else s
+
+
+def buscar(consulta: str, k: int = 8, c: genai.Client = None) -> list:
+    """Devuelve los k fragmentos más relevantes (búsqueda híbrida con diversidad), con su puntaje."""
     fragmentos, vectores = cargar_indice()
     q = embeddings([consulta], "RETRIEVAL_QUERY", c or cliente())[0]
-    puntajes = vectores @ q
+    puntajes = (1 - PESO_LEXICO) * (vectores @ q) + PESO_LEXICO * _lexico(consulta, fragmentos)
     # Si la consulta menciona un indicador (p. ej. "3.1"), se favorece su ficha técnica.
     mencionados = set(re.findall(r"\b(\d{1,2}\.\d)\b", consulta))
     for i, f in enumerate(fragmentos):
         if f.get("indicador") in mencionados:
             puntajes[i] += 0.05
-    orden = np.argsort(-puntajes)[:k]
-    return [{**fragmentos[i], "puntaje": float(puntajes[i])} for i in orden]
+    elegidos, por_seccion = [], collections.Counter()
+    for i in np.argsort(-puntajes):
+        clave = (fragmentos[i]["archivo"], fragmentos[i]["seccion"])
+        if por_seccion[clave] >= MAX_POR_SECCION:
+            continue
+        por_seccion[clave] += 1
+        elegidos.append(i)
+        if len(elegidos) == k:
+            break
+    return [{**fragmentos[i], "puntaje": float(puntajes[i])} for i in elegidos]
 
 
 if __name__ == "__main__":
