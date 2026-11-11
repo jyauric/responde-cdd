@@ -83,7 +83,10 @@ if st.session_state.historial:
     r = st.session_state.historial[0]
     st.divider()
     auto = r["estado"] == "Respondida automáticamente"
-    (st.success if auto else st.warning)(f"**{r['estado']}** · Derivar a: {nombre_destino(r['destino'])}")
+    if auto:
+        st.success(f"**{r['estado']}** · Tema: {nombre_destino(r['destino'])}")
+    else:
+        st.warning(f"**{r['estado']}** · Derivar a: {nombre_destino(r['destino'])}")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("IGED", r["iged"] or "No indicada")

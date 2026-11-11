@@ -38,7 +38,8 @@ ROMANA = re.compile(r"^#+\s*\**\s*(I|II|III|IV|V|VI|VII|VIII)\.\s+(.+?)\**\s*$")
 NUMERAL = re.compile(r"^(?:#+|-)\s*\**\s*([67]\.\d{1,2})\.\s+(.+?)\**\s*$")
 ANEXO = re.compile(r"^#+\s*\**\s*Anexo N°\s*(\d+)\s*:\s*(.+?)\**\s*$", re.I)
 FICHA_COMPROMISO = re.compile(r"^#+\s*\**\s*Compromiso\s+(\d+)\s*:", re.I)
-FICHA_INDICADOR = re.compile(r"^#+.*INDICADOR\s+(\d{1,2}\.\d)\b")
+# Título de la ficha de un indicador: como encabezado (#), fila de tabla (|**INDICADOR 5.1**|) o línea en negrita.
+FICHA_INDICADOR = re.compile(r"^(?:#+.*|\|\s*\**\s*|\*\*.*)INDICADOR\s+(\d{1,2}\.\d)\b")
 SUBTITULO = re.compile(r"^##\s+(.+?)\s*$")  # secciones de las publicaciones web (p. ej. "Resultados - Tramo 1")
 INICIO_NORMA = re.compile(r"^#\s+Norma Técnica\s*$")
 SEPARADOR_TABLA = re.compile(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$")
@@ -113,7 +114,7 @@ def fragmentar(stem: str, fuente: dict) -> list:
             nueva = (f"Anexo N° 2: Ficha técnica del Compromiso {c.group(1)}", None)
         elif not es_norma and (t := SUBTITULO.match(linea)):
             nueva = (t.group(1), None)
-        elif (i := FICHA_INDICADOR.match(linea)) and i.group(1) != indicador:
+        elif (i := FICHA_INDICADOR.match(linea)) and i.group(1) != indicador and seccion.startswith("Anexo N° 2"):
             num = i.group(1)
             nueva = (f"Anexo N° 2: Ficha técnica del indicador {num}", num)
 
@@ -229,6 +230,7 @@ def cargar_indice():
 
 
 PESO_LEXICO = 0.2         # búsqueda híbrida: 80 % significado (embeddings) + 20 % palabras en común
+FICHA_MAX = 8            # fragmentos máximos de la ficha de un indicador mencionado
 MAX_POR_SECCION = 2       # diversidad: evita que una sola sección ocupe todos los resultados
 VACIAS = set("de la el en y a los las del que por para con se su al o un una es no lo como sus le ya este esta "
              "son ser han ha nos".split())
@@ -259,8 +261,13 @@ def buscar(consulta: str, k: int = 8, c: genai.Client = None) -> list:
     for i, f in enumerate(fragmentos):
         if f.get("indicador") in mencionados:
             puntajes[i] += 0.05
-    elegidos, por_seccion = [], collections.Counter()
+    # Si la consulta menciona un indicador, entra su ficha técnica completa (fechas de ambos tramos, fórmula, etc.).
+    elegidos = [i for i in np.argsort(-puntajes) if fragmentos[i].get("indicador") in mencionados][:FICHA_MAX]
+    por_seccion = collections.Counter((fragmentos[i]["archivo"], fragmentos[i]["seccion"]) for i in elegidos)
+    k += len(elegidos)
     for i in np.argsort(-puntajes):
+        if i in elegidos:
+            continue
         clave = (fragmentos[i]["archivo"], fragmentos[i]["seccion"])
         if por_seccion[clave] >= MAX_POR_SECCION:
             continue
