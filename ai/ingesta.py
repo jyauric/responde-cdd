@@ -53,6 +53,11 @@ def main() -> None:
     for doc in DOCUMENTOS:
         descargar(doc)
         filas.append({**doc, "fecha_descarga": date.today().isoformat()})
+    # Conserva las filas registradas por otros scripts (p. ej. ai/publicaciones.py).
+    propios = {d["archivo"] for d in DOCUMENTOS}
+    if (CARPETA / "fuentes.csv").exists():
+        with open(CARPETA / "fuentes.csv", encoding="utf-8") as f:
+            filas += [r for r in csv.DictReader(f) if r["archivo"] not in propios]
     with open(CARPETA / "fuentes.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["archivo", "tipo", "estado", "titulo", "url", "fecha_descarga"])
         w.writeheader()

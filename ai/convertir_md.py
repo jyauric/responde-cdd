@@ -238,7 +238,8 @@ def convertir(archivo: str) -> Path:
 def main() -> None:
     DESTINO.mkdir(parents=True, exist_ok=True)
     with open(ORIGEN / "fuentes.csv", encoding="utf-8") as f:
-        vigentes = [fila["archivo"] for fila in csv.DictReader(f) if fila["estado"] == "vigente"]
+        vigentes = [fila["archivo"] for fila in csv.DictReader(f)
+                    if fila["estado"] == "vigente" and fila["archivo"].endswith(".pdf")]
     for archivo in vigentes:
         convertir(archivo)
 

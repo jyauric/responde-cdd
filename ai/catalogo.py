@@ -74,3 +74,12 @@ EQUIPOS = {
 
 def especialista_de(indicador: str):
     return next((e for e, inds in ESPECIALISTAS.items() if indicador in inds), None)
+
+
+# Tramo en que se evalúa cada indicador (Anexo N° 3). 5.1, 6.1 y 6.3 se evalúan en ambos tramos.
+TRAMOS = {
+    "1.1": [1], "1.2": [1], "1.3": [1], "3.1": [1], "8.1": [1],
+    "5.1": [1, 2], "6.1": [1, 2], "6.3": [1, 2],
+    "2.1": [2], "3.2": [2], "3.3": [2], "4.1": [2], "6.2": [2], "7.1": [2], "7.2": [2], "7.3": [2],
+    "9.1": [2], "9.2": [2], "10.1": [2],
+}

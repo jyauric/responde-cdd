@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field
 from google.genai import types
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from catalogo import COMPROMISOS, EQUIPOS, ESPECIALISTAS, INDICADORES, especialista_de  # noqa: E402
+from catalogo import COMPROMISOS, EQUIPOS, ESPECIALISTAS, INDICADORES, TRAMOS, especialista_de  # noqa: E402
+import participacion  # noqa: E402
 import rag  # noqa: E402
 
 UMBRAL = 0.8
@@ -43,6 +44,7 @@ def instrucciones() -> str:
         f"- {e}: " + "; ".join(f"{i} {INDICADORES[i]}" for i in inds) for e, inds in ESPECIALISTAS.items())
     equipos = "\n".join(f"- {k}: {v}" for k, v in EQUIPOS.items())
     compromisos = "\n".join(f"- {n}. {t}" for n, t in COMPROMISOS.items())
+    tramos = "\n".join(f"- {i}: Tramo " + " y ".join(map(str, t)) for i, t in TRAMOS.items())
     return f"""Eres el asistente del equipo de Compromisos de Desempeño (CdD) 2026. Respondes consultas de DRE/GRE y UGEL.
 
 REGLAS
@@ -50,8 +52,17 @@ REGLAS
 2. Si algo no está en los fragmentos, márcalo como no cubierto (cubierto_totalmente = false) y explica en "falta".
 3. Si la norma (RM 057-2026-MINEDU) y "Canales de consulta" no coinciden, prevalece la norma.
 4. No escribas nombres, correos ni celulares de funcionarios; indica el área responsable o el canal institucional.
-5. Consultas sobre el resultado de una IGED específica: los fragmentos no tienen resultados por IGED,
-   así que no están cubiertas; derívalas al especialista del indicador (validación) o a DATOS (consolidación).
+5. Resultados de una IGED: los fragmentos NO contienen los resultados en sí, pero sí DÓNDE se publican
+   (por tramo, tipo -preliminar o final- y región). Si preguntan dónde verlos, indica el enlace exacto de su región
+   y tramo tal como aparece en los fragmentos (la región se deduce del Anexo 1 o del nombre de la IGED);
+   eso sí está cubierto. Si piden el valor de su resultado o quieren observarlo, no está cubierto: deriva al
+   especialista del indicador (valida el resultado) o a DATOS (consolida y publica los resultados).
+   No afirmes que existe el PDF de una IGED concreta: indica que busque el PDF de su IGED en esa página.
+   Verifica el tramo del indicador con la lista TRAMOS; si la consulta menciona un tramo equivocado, acláralo.
+   La lista "IGED con resultados publicados" de cada región es la válida. Si la IGED que consulta NO figura en
+   esa lista de su región, responde que no participa en los Compromisos de Desempeño 2026 porque no cumplió el
+   requisito del numeral 6.10 literal b de la Norma Técnica (designar a su representante mediante Resolución de
+   su Titular dentro de los 15 días hábiles posteriores a la publicación de la norma); eso sí está cubierto.
 6. Ampliaciones o prórrogas de plazo: la norma solo contempla el caso excepcional del numeral 6.5 literal h
    (interrupción de la plataforma o sistema el último día de cumplimiento). Explica eso si aparece en los fragmentos,
    pero marca la consulta como no cubierta: cada caso lo evalúa el especialista del indicador.
@@ -65,7 +76,10 @@ Equipos transversales:
 Si la consulta es sobre un indicador específico, va a su especialista; si es transversal, al equipo.
 
 COMPROMISOS
-{compromisos}"""
+{compromisos}
+
+TRAMOS (Anexo N° 3: en qué tramo se evalúa cada indicador)
+{tramos}"""
 
 
 def generar(consulta: str, fragmentos: list, c) -> Clasificacion:
@@ -102,14 +116,31 @@ def responder(consulta: str, k: int = 8) -> dict:
     if r.indicador and especialista_de(r.indicador) and destino in ESPECIALISTAS:
         destino = especialista_de(r.indicador)
     automatica = r.cubierto_totalmente and len(citas) > 0 and r.confianza >= UMBRAL
+    respuesta, falta, cubierto, confianza = r.respuesta, r.falta, r.cubierto_totalmente, r.confianza
+
+    # D26: si la IGED está en el Anexo N° 1 pero no tiene resultados publicados, no participa.
+    # Se decide en código (no por el modelo) y se cita el numeral 6.10 b y la página de resultados.
+    if participacion.participa(r.iged) is False:
+        todos, _ = rag.cargar_indice()
+        req = next(f for f in todos if "requisito para su participación" in f["texto"])
+        res = next((f for f in todos if f["archivo"].startswith("Resultados")), None)
+        citas = [req] + ([res] if res else [])
+        respuesta = (f"La {r.iged} no participa en los Compromisos de Desempeño 2026: no figura entre las IGED con "
+                     "resultados publicados porque no cumplió el requisito del numeral 6.10, literal b, de la Norma "
+                     "Técnica, que establece que la designación del representante de la IGED (mediante Resolución "
+                     "de su Titular, remitida a la UFD dentro de los quince días hábiles posteriores a la publicación "
+                     "de la norma) es requisito para su participación en el mecanismo.")
+        falta, cubierto, confianza, automatica, destino = None, True, 1.0, True, "DATOS"
+
     return {
         "consulta": consulta,
         "estado": "Respondida automáticamente" if automatica else "Pendiente por validar",
         "destino": destino, "indicador": r.indicador, "iged": r.iged, "tema": r.tema,
-        "cubierto_totalmente": r.cubierto_totalmente, "confianza": r.confianza,
-        "respuesta": r.respuesta, "falta": r.falta,
+        "cubierto_totalmente": cubierto, "confianza": confianza,
+        "respuesta": respuesta, "falta": falta,
         "citas": [{"etiqueta": rag.etiqueta(f), "archivo": f["archivo"], "url": f["url"],
-                   "pagina": f["pagina"], "impresa": f["impresa"]} for f in citas],
+                   "pagina": f["pagina"], "pagina_fin": f.get("pagina_fin") or f["pagina"],
+                   "impresa": f["impresa"]} for f in citas],
         "modelo": getattr(r, "_modelo", None),
     }
 

@@ -39,6 +39,7 @@ NUMERAL = re.compile(r"^(?:#+|-)\s*\**\s*([67]\.\d{1,2})\.\s+(.+?)\**\s*$")
 ANEXO = re.compile(r"^#+\s*\**\s*Anexo N°\s*(\d+)\s*:\s*(.+?)\**\s*$", re.I)
 FICHA_COMPROMISO = re.compile(r"^#+\s*\**\s*Compromiso\s+(\d+)\s*:", re.I)
 FICHA_INDICADOR = re.compile(r"^#+.*INDICADOR\s+(\d{1,2}\.\d)\b")
+SUBTITULO = re.compile(r"^##\s+(.+?)\s*$")  # secciones de las publicaciones web (p. ej. "Resultados - Tramo 1")
 INICIO_NORMA = re.compile(r"^#\s+Norma Técnica\s*$")
 SEPARADOR_TABLA = re.compile(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$")
 
@@ -110,6 +111,8 @@ def fragmentar(stem: str, fuente: dict) -> list:
             nueva = (f"Anexo N° {a.group(1)}: {a.group(2)}", None)
         elif (c := FICHA_COMPROMISO.match(linea)):
             nueva = (f"Anexo N° 2: Ficha técnica del Compromiso {c.group(1)}", None)
+        elif not es_norma and (t := SUBTITULO.match(linea)):
+            nueva = (t.group(1), None)
         elif (i := FICHA_INDICADOR.match(linea)) and i.group(1) != indicador:
             num = i.group(1)
             nueva = (f"Anexo N° 2: Ficha técnica del indicador {num}", num)
