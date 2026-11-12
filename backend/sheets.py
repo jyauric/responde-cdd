@@ -50,6 +50,14 @@ def libro() -> gspread.Spreadsheet:
     return gspread.service_account_from_dict(info).open_by_key(hoja_id)
 
 
+def url_hoja() -> str:
+    """Enlace a la hoja del equipo (solo la abre quien tenga acceso en Google)."""
+    _, hoja_id = _credenciales()
+    if not hoja_id:
+        raise RuntimeError("Falta GOOGLE_SHEET_ID.")
+    return f"https://docs.google.com/spreadsheets/d/{hoja_id}"
+
+
 def preparar() -> None:
     """Crea (si no existen) las pestañas 'consultas' y 'equipos' con sus encabezados."""
     lb = libro()

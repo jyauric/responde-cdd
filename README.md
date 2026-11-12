@@ -1,4 +1,6 @@
-# responde-cdd
+# CdD Responde
+
+*Repositorio: `responde-cdd`*
 
 > **Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de Desempeño, mediante IA que busca en la norma y en las publicaciones web de la herramienta, cita la fuente y deriva al especialista solo lo que no está cubierto.**
 
@@ -14,7 +16,9 @@ Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de
 
 ## 2. Founder
 
-🔴 POR COMPLETAR (Josselin): nombre, foto (`docs/founder.jpg`), una línea sobre ti y por qué eres la persona indicada para este problema.
+<img src="docs/founder.jpg" alt="Founder" width="140">
+
+**Josselin Yauri** · Soy economista de la Universidad del Pacífico y actualmente trabajo en la Unidad de Financiamiento por Desempeño del Ministerio de Educación, en la herramienta Compromisos de Desempeño. Conozco de primera mano las consultas que llegan de las IGED, cómo se responden y qué información pública existe para responderlas.
 
 **Cómo cubro cada rol con agentes de IA:** producto y decisiones de dominio (yo: qué responde sola la herramienta, a quién se deriva cada tema, qué se publica); ingeniería con Claude Code como co-founder técnico (ver sección 9); diseño de la app y del panel iterado con Claude Code a partir de mi revisión; ventas: 🔴 POR COMPLETAR.
 
@@ -71,7 +75,15 @@ Medir el volumen real es justamente uno de los primeros resultados del piloto: e
 
 **Flujo del demo:** (1) consulta cubierta por la norma → respuesta con cita; (2) consulta fuera de la norma → "Pendiente por validar" y derivada; (3) el especialista responde en la hoja → se incorpora → la misma pregunta, redactada distinto, se responde sola; (4) panel de la coordinadora.
 
-**Capturas:** 🔴 POR COMPLETAR (`docs/captura_1_respuesta.png`, `docs/captura_2_pendiente.png`, `docs/captura_3_panel.png`)
+**Capturas:**
+
+| Respondida automáticamente (con cita) | Pendiente por validar (borrador + derivación) |
+|---|---|
+| ![Respuesta automática](docs/captura_1_respuesta.png) | ![Consulta pendiente](docs/captura_2_pendiente.png) |
+
+**Panel de la coordinadora** (con botón para abrir la hoja de registro del equipo):
+
+![Panel de la coordinadora](docs/captura_3_panel.png)
 
 **Arquitectura:**
 

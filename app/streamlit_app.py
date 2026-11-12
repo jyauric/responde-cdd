@@ -27,16 +27,15 @@ from catalogo import EQUIPOS, ESPECIALISTAS, INDICADORES  # noqa: E402
 import clasificador  # noqa: E402
 import sheets  # noqa: E402
 
-st.set_page_config(page_title="responde-cdd", page_icon="📘", layout="wide")
+st.set_page_config(page_title="CdD Responde", page_icon=":material/forum:", layout="wide")
 
-EJEMPLOS = {
-    "PUR consolidado": "Buenos días, les escribimos de la UGEL Bagua. ¿Hasta qué fecha la DRE debe enviar el PUR "
-                       "consolidado y por qué medio?",
-    "Ampliación de plazo": "Buenas tardes, desde la UGEL Espinar: ¿pueden ampliarnos el plazo para registrar las "
-                           "plazas del indicador 1.1 porque tuvimos problemas con el sistema?",
-    "Resultado de una IGED": "Desde la DRE Cusco queremos saber dónde vemos nuestro resultado preliminar del "
-                             "indicador 3.2 en el Tramo 2.",
-}
+INSTRUCCIONES = """
+**Cómo escribir tu consulta**
+1. Indica el **nombre de tu IGED** (por ejemplo: *UGEL Espinar* o *DRE Cusco*). Lo necesitamos para responderte
+   según tu región y para el seguimiento.
+2. Si tu consulta es sobre un indicador, indica su **número** (por ejemplo: *indicador 3.2*).
+3. Escribe tu **pregunta** (por ejemplo: *¿Dónde vemos nuestro resultado preliminar del Tramo 2?*).
+"""
 
 
 def nombre_destino(codigo: str) -> str:
@@ -79,12 +78,17 @@ with st.sidebar:
 st.markdown("""
 <style>
   .block-container {padding-top: 2.2rem; max-width: 1200px;}
-  h1 {color: #387870; letter-spacing: -0.5px;}
+  .marca {display: flex; align-items: center; gap: 14px; margin: 0.8rem 0 0.4rem;}
+  .marca .logo {background: #387870; color: #fff; font-weight: 800; font-size: 1.35rem; border-radius: 14px;
+                padding: 10px 12px; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(56,120,112,.25);}
+  .marca .nombre {font-size: 2.3rem; font-weight: 800; color: #1f2b29; letter-spacing: -0.5px; line-height: 1;}
+  .marca .nombre span {color: #387870;}
   [data-testid="stMetric"] {background: #ffffff;}
   [data-testid="stMetricValue"] {color: #2b5f59;}
 </style>
 """, unsafe_allow_html=True)
-st.title("responde-cdd")
+st.markdown('<div class="marca"><div class="logo">CdD</div>'
+            '<div class="nombre">CdD <span>Responde</span></div></div>', unsafe_allow_html=True)
 st.markdown(
     "Respondemos al instante las consultas de las UGEL y DRE/GRE sobre **Compromisos de Desempeño**, "
     "mediante IA que busca en la norma y en las publicaciones web de la herramienta, cita la fuente "
@@ -100,13 +104,12 @@ tab_consulta, tab_panel = st.tabs(["Consultas", "Panel de la coordinadora"])
 
 with tab_consulta:
   st.subheader("Nueva consulta")
-  cols = st.columns(len(EJEMPLOS))
-  for col, (titulo, texto) in zip(cols, EJEMPLOS.items()):
-      if col.button(f"Ejemplo: {titulo}", width="stretch"):
-          st.session_state.consulta = texto
+  st.info(INSTRUCCIONES, icon=":material/info:")
 
   canal = st.radio("Canal", ["Correo", "WhatsApp"], horizontal=True)
-  consulta = st.text_area("Pega aquí el texto de la consulta", key="consulta", height=110)
+  consulta = st.text_area("Pega aquí el texto de la consulta", key="consulta", height=110,
+                          placeholder="Ej.: Desde la DRE Cusco queremos saber dónde vemos nuestro resultado "
+                                      "preliminar del indicador 3.2 en el Tramo 2.")
 
   if st.button("Procesar consulta", type="primary", disabled=not consulta.strip()):
       with st.spinner("Buscando en la norma y redactando la respuesta…"):
@@ -232,8 +235,14 @@ with tab_panel:
     st.caption("Datos de la hoja del equipo (consultas de ejemplo). Muestra la carga del equipo, de dónde consultan "
                "y qué indicadores generan más dudas, insumo para la norma del próximo año. "
                "Sin selección en un filtro se muestran todos.")
-    if st.button("Actualizar datos"):
+    b_act, b_hoja, _ = st.columns([1, 1.4, 3])
+    if b_act.button("Actualizar datos", icon=":material/refresh:", width="stretch"):
         datos_panel.clear()
+    try:
+        b_hoja.link_button("Abrir hoja de registro", sheets.url_hoja(), icon=":material/table_view:",
+                           width="stretch", help="Hoja de Google Sheets del equipo (requiere acceso)")
+    except Exception:
+        pass
     try:
         df = datos_panel()
     except Exception as e:
