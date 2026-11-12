@@ -78,17 +78,17 @@ with st.sidebar:
 st.markdown("""
 <style>
   .block-container {padding-top: 2.2rem; max-width: 1200px;}
-  .marca {display: flex; align-items: center; gap: 14px; margin: 0.8rem 0 0.4rem;}
-  .marca .logo {background: #387870; color: #fff; font-weight: 800; font-size: 1.35rem; border-radius: 14px;
-                padding: 10px 12px; letter-spacing: 0.5px; box-shadow: 0 2px 6px rgba(56,120,112,.25);}
-  .marca .nombre {font-size: 2.3rem; font-weight: 800; color: #1f2b29; letter-spacing: -0.5px; line-height: 1;}
-  .marca .nombre span {color: #387870;}
+  .marca {font-size: 2.4rem; font-weight: 800; color: #1f2b29; letter-spacing: -0.5px; line-height: 1.1;
+          margin: 0.8rem 0 0.5rem;}
+  .marca span {color: #387870;}
   [data-testid="stMetric"] {background: #ffffff;}
   [data-testid="stMetricValue"] {color: #2b5f59;}
+  /* Controles del panel (botones y filtros): fondo verde claro para distinguirlos de los datos */
+  .st-key-controles {background: #dcebe7; border-color: #b9d6cf !important;}
+  .st-key-controles button {background: #ffffff;}
 </style>
 """, unsafe_allow_html=True)
-st.markdown('<div class="marca"><div class="logo">CdD</div>'
-            '<div class="nombre">CdD <span>Responde</span></div></div>', unsafe_allow_html=True)
+st.markdown('<div class="marca">CdD <span>Responde</span></div>', unsafe_allow_html=True)
 st.markdown(
     "Respondemos al instante las consultas de las UGEL y DRE/GRE sobre **Compromisos de Desempeño**, "
     "mediante IA que busca en la norma y en las publicaciones web de la herramienta, cita la fuente "
@@ -235,14 +235,15 @@ with tab_panel:
     st.caption("Datos de la hoja del equipo (consultas de ejemplo). Muestra la carga del equipo, de dónde consultan "
                "y qué indicadores generan más dudas, insumo para la norma del próximo año. "
                "Sin selección en un filtro se muestran todos.")
-    b_act, b_hoja, _ = st.columns([1, 1.4, 3])
+    controles = st.container(border=True, key="controles")
+    b_act, b_hoja, _ = controles.columns([1, 1.4, 3])
     if b_act.button("Actualizar datos", icon=":material/refresh:", width="stretch"):
         datos_panel.clear()
     try:
         b_hoja.link_button("Abrir hoja de registro", sheets.url_hoja(), icon=":material/table_view:",
                            width="stretch", help="Hoja de Google Sheets del equipo (requiere acceso)")
-    except Exception:
-        pass
+    except Exception as e:
+        b_hoja.caption(f"Sin enlace a la hoja: {e}")
     try:
         df = datos_panel()
     except Exception as e:
@@ -262,7 +263,7 @@ with tab_panel:
     # ---- Filtros (desplegables en una fila)
     dias = df["fecha_dt"].dropna().dt.date
     desde, hasta = dias.min(), dias.max()
-    cols = st.columns([1, 1.4, 1, 1, 1, 1, 1.1])
+    cols = controles.columns([1, 1.4, 1, 1, 1, 1, 1.1])
     with cols[0].popover("Fechas", width="stretch"):
         rango = st.date_input("Rango de fechas", value=(desde, hasta), min_value=desde, max_value=hasta,
                               format="DD/MM/YYYY", key="f_fechas")
@@ -278,7 +279,7 @@ with tab_panel:
     sel_iged = filtro(cols[4], "IGED", sorted(set(igeds["iged"])), "f_iged")
     sel_canal = filtro(cols[5], "Canal", sorted(set(df["canal"])), "f_canal")
 
-    solo_pendientes = st.checkbox("Ver solo consultas pendientes por validar", key="f_solo_pendientes")
+    solo_pendientes = controles.checkbox("Ver solo consultas pendientes por validar", key="f_solo_pendientes")
 
     f = df.copy()
     if solo_pendientes:
@@ -316,6 +317,27 @@ with tab_panel:
         barras(f, "indicador_corto", "indicador_nombre", "Indicadores que más consultas generan")
         barras(f, "canal", "canal", "Consultas por canal")
 
-    with st.expander("Ver tabla de consultas"):
-        st.dataframe(f[["id", "fecha", "canal", "iged", "region", "tema", "destino_corto", "indicador", "estado",
-                        "en_base"]], width="stretch", hide_index=True)
+    # ---- Listado de consultas y respuestas (sigue los filtros)
+    st.subheader(f"Consultas y respuestas ({len(f)})")
+    st.caption("Más recientes primero. Se actualiza con los filtros de arriba.")
+    insignia = {"Respondida automáticamente": "green", "Pendiente por validar": "orange", "Respondido": "blue"}
+    esc = lambda x: str(x).replace("$", "\\$")  # evita que "$" se lea como fórmula
+    with st.container(height=650, border=False):
+        for _, c in f.sort_values("fecha_dt", ascending=False).iterrows():
+            with st.container(border=True):
+                datos = [f"**N° {c['id']}**", str(c["fecha"]), str(c["canal"]),
+                         str(c["iged"]) or "IGED sin dato", str(c["region"]) or "región sin dato"]
+                color = insignia.get(c["estado"], "gray")
+                st.markdown(" · ".join(datos) + f"  :{color}-badge[{c['estado']}]")
+                st.markdown(f"**Consulta:** {esc(c['consulta'])}")
+                if str(c["respuesta_especialista"]).strip():
+                    st.markdown(f"**Respuesta del especialista:** {esc(c['respuesta_especialista'])}")
+                    st.caption(f"Borrador de la IA: {esc(c['respuesta_ia'])}")
+                else:
+                    titulo = "Respuesta" if c["estado"] == "Respondida automáticamente" else "Borrador de la IA"
+                    st.markdown(f"**{titulo}:** {esc(c['respuesta_ia'])}")
+                extra = [f"Derivada a: {c['destino_nombre']}" if c["estado"] != "Respondida automáticamente"
+                         else f"Tema: {c['destino_nombre']}"]
+                if str(c["citas"]).strip():
+                    extra.append(f"Fuentes: {c['citas']}")
+                st.caption(" · ".join(extra))
