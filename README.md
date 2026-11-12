@@ -28,9 +28,19 @@ Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de
 - Cada especialista responde las de sus indicadores; la **coordinadora revisa** las respuestas antes de enviarlas, aunque no siempre tiene tiempo.
 - Muchas respuestas **ya están en la norma** o en las publicaciones web, pero hay que buscarlas en un documento de **183 páginas** que además tuvo una modificatoria que luego se dejó sin efecto (RM 253-2026 → RM 310-2026).
 
-**Cuánto les cuesta:** 🔴 POR COMPLETAR con las cifras de las 3 conversaciones (consultas por semana, % que ya está en la norma, minutos por consulta). Se reportan tal como las dieron las personas entrevistadas.
+**Cuánto les cuesta:** en las 3 conversaciones nadie dio cifras (consultas por semana, minutos por consulta), así que no las reportamos. Lo que sí dijeron las tres personas:
+- Armar las respuestas **toma tiempo**, y también **sistematizar** (registrar) las consultas.
+- En muchas etapas el equipo está **cargado con otras tareas** y además debe responder las consultas.
+- Las consultas llegan **siempre**, por WhatsApp o correo.
 
-**Evidencia:** notas de 3 conversaciones en [`docs/research/`](docs/research/). 🔴 POR COMPLETAR
+Medir el volumen real es justamente uno de los primeros resultados del piloto: el panel cuenta las consultas por canal, tema e IGED.
+
+**Evidencia:** notas de 3 conversaciones informales (no fueron entrevistas estructuradas) con 2 especialistas y la coordinación del equipo, publicadas sin nombres y con su consentimiento, en [`docs/research/`](docs/research/).
+
+**Lo que cambiamos por esas conversaciones:**
+- La coordinación notó que la herramienta podía no leer bien las **notas al pie**. Lo confirmamos en el numeral 6.5 f.ii y lo corregimos: cada nota al pie ahora queda junto al párrafo que la llama.
+- En las conversaciones 1 y 2 se pidió cargar **más documentos de la herramienta** como fuentes, lo que quedó como siguiente paso (sección 7).
+- En la conversación 1 se pidió explicar a las IGED que **indiquen de qué IGED son**, porque se necesita para el seguimiento. Quedó como siguiente paso para el canal de WhatsApp.
 
 ## 4. Solución e insight
 
@@ -46,6 +56,7 @@ Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de
 **Reglas que vienen del conocimiento del equipo** (y se aplican en código, no las decide la IA):
 - Una IGED del Anexo N° 1 sin resultados publicados **no participa** en CdD 2026 por no cumplir el numeral 6.10 b (designación de su representante en plazo): se le informa; si es una DRE/GRE con UGEL participantes en su región, además se le responde con información general para su región.
 - Ampliaciones de plazo: solo el caso excepcional del numeral 6.5 h; siempre se derivan al especialista del indicador.
+- Exclusión o ajuste del denominador (6.5 f): se identifica el caso (i, ii o iii) y, si son factores ajenos, se indica el plazo de 10 días hábiles y su nota al pie (si el plazo supera la fecha de cumplimiento, el sustento va en el período de observaciones). Si el evento culminó después de la fecha de cumplimiento, la norma no lo contempla y se deriva al especialista.
 - Si la norma y otra publicación no coinciden, prevalece la norma. No se reproducen nombres, correos ni celulares de funcionarios.
 
 ## 5. Why now
@@ -133,7 +144,7 @@ Todos incluyen documentos ilimitados, panel de la coordinadora, registro en hoja
 - **Por estimar:** costo de servidor para un cliente que paga (hoy Streamlit Community Cloud y Google Sheets, sin costo en el piloto) y horas de soporte e implementación; el margen sobre IA debe cubrirlos.
 - Para un cliente que paga se usaría el **plan de pago de Gemini**, en el que, según la página oficial, el contenido **no** se usa para mejorar los productos de Google (en el plan gratuito sí).
 
-**Qué sigue:** integración con **WhatsApp Business** (canal principal de las consultas), conexión con **Excel 365** (Microsoft Graph) y con las bases de datos del equipo, y lectura directa del resultado de cada IGED desde su PDF publicado.
+**Qué sigue:** cargar **más documentos de la herramienta** como fuentes (pedido en las conversaciones), integración con **WhatsApp Business** (canal principal de las consultas, con un mensaje de bienvenida que pida indicar la IGED), conexión con **Excel 365** (Microsoft Graph) y con las bases de datos del equipo, y lectura directa del resultado de cada IGED desde su PDF publicado.
 
 ## 8. Herramientas del curso
 

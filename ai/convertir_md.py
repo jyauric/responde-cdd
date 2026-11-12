@@ -184,6 +184,34 @@ def escribir_anexo(anexo: int, texto: str, filas: list, pond_compromiso: dict) -
     return "\n".join(titulo + ([""] if titulo else []) + tabla)
 
 
+# ---------------------------------------------------------------- Notas al pie
+NOTA_PIE = re.compile(r"^> (\d+) (.+)$")
+
+
+def mover_notas(texto: str, distancia: int = 40) -> str:
+    """Coloca cada nota al pie ("> N texto") justo después del párrafo que la llama ("<sup>N</sup>").
+
+    En el PDF la nota queda al pie de la página, a veces lejos de su llamada; si el RAG corta entre ambas,
+    la IA recibe la regla sin su excepción (p. ej., la nota 1 del numeral 6.5 f.ii). Si no se encuentra la
+    llamada en las líneas previas, la nota se deja donde está.
+    """
+    lineas = texto.split("\n")
+    i = 0
+    while i < len(lineas):
+        m = NOTA_PIE.match(lineas[i])
+        if m:
+            marca = f"<sup>{m.group(1)}</sup>"
+            for j in range(i - 1, max(i - distancia, 0) - 1, -1):
+                if marca in lineas[j] and not lineas[j].lstrip().startswith("|"):
+                    nota = f"> Nota al pie {m.group(1)}: {m.group(2)}"
+                    del lineas[i]
+                    lineas[j + 1:j + 1] = ["", nota]
+                    i += 1  # la lista creció en una línea antes de i
+                    break
+        i += 1
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lineas))
+
+
 # ---------------------------------------------------------------- Conversión
 ANEXO = re.compile(r"Anexo N°\s*(\d+)\s*:", re.I)
 
@@ -228,7 +256,7 @@ def convertir(archivo: str) -> Path:
         partes.append(f"<!-- {marca} -->\n{texto}")
 
     salida = DESTINO / (Path(archivo).stem + ".md")
-    salida.write_text("\n\n".join(partes) + "\n", encoding="utf-8")
+    salida.write_text(mover_notas("\n\n".join(partes)) + "\n", encoding="utf-8")
     print(f"{archivo} -> {salida.name} ({len(paginas)} págs.)")
     if cambios:
         print("  palabras separadas:", "; ".join(f"{k} -> {v}" for k, v in sorted(cambios.items())))

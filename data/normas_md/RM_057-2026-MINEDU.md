@@ -570,9 +570,9 @@ culmina el tramo e inicia el proceso de evaluación de los indicadores que lo co
 
 En ese caso, la IGED debe comunicar, sustentar y presentar las evidencias correspondientes a través de un informe firmado por el titular de la IGED, dirigido al área responsable del indicador y con copia a la UFD, haciendo uso del protocolo o formato que el área responsable haya habilitado para dicho fin, de corresponder, y remitiéndolo como máximo hasta diez (10) días hábiles contabilizados a partir del día siguiente de la culminación del evento<sup>1</sup> . Dicho informe debe incluir evidencias a partir de medios de verificación oficiales o documentación institucional verificable que permita acreditar objetivamente la ocurrencia del evento y su impacto (por ejemplo, decretos supremos de declaratoria de emergencia por situaciones críticas como crimen organizado o desastres naturales). El área responsable analiza la información recibida y, en caso lo requiera, solicita información adicional al área de soporte. El área responsable, en conjunto con la UFD, determina si el sustento y evidencias presentadas justifican la solicitud de la IGED. 
 
-De justificarse la solicitud, se procede de la siguiente manera: i) en caso se requiera el ajuste del denominador del indicador, el área responsable 
+> Nota al pie 1: En caso el periodo de diez (10) días hábiles contabilizados a partir del día siguiente de la culminación del evento supere la fecha de cumplimiento del indicador, los sustentos correspondientes deberán remitirse durante el período de observaciones, conforme a lo dispuesto en los literales m. n. y o. del numeral 6.5 de la presente Norma Técnica.
 
-> 1 En caso el periodo de diez (10) días hábiles contabilizados a partir del día siguiente de la culminación del evento supere la fecha de cumplimiento del indicador, los sustentos correspondientes deberán remitirse durante el período de observaciones, conforme a lo dispuesto en los literales m. n. y o. del numeral 6.5 de la presente Norma Técnica.
+De justificarse la solicitud, se procede de la siguiente manera: i) en caso se requiera el ajuste del denominador del indicador, el área responsable 
 
 <!-- pagina: 22 | impresa: 18 -->
 debe incorporar y detallar dichos ajustes en su informe de evaluación de cumplimiento, según corresponda; ii) en caso la solicitud sea para la exclusión completa del indicador y esta haya sido aceptada, el área responsable debe comunicar la exclusión respectiva a la UFD, y esta remite un oficio a la IGED comunicando dicha decisión. 
@@ -3685,6 +3685,8 @@ Posteriormente, se calcula la meta de las DRE/GRE como el resultado del ratio en
 
 Definir una metodología de cálculo del MMA<sup>2</sup> para las IGED que participan en el mecanismo denominado “Compromisos de Desempeño 2026” (CdD 2026). Considerando la heterogeneidad de las IGED a nivel nacional, se busca que el MMA nivele los incentivos para el cumplimiento de las metas asociadas a los indicadores de los compromisos establecidos. 
 
+> Nota al pie 2: El Monto Máximo Asignable (MMA) se refiere a la cantidad máxima de recursos que pueden recibir las IGED, por el cumplimiento de las metas vinculadas a los compromisos del Tramo 1 y sus indicadores. Representa el incentivo monetario del mecanismo.
+
 #### **2. Principios para el cálculo de MMA** 
 
 Como parte de la metodología propuesta para asignar el MMA por IGED, se consideran los criterios de eficiencia, justicia y equidad, transparencia y predictibilidad, replicabilidad y robustez, en el uso de los recursos educativos, según se detalla a continuación: 
@@ -3698,8 +3700,6 @@ Como parte de la metodología propuesta para asignar el MMA por IGED, se conside
 - **Replicabilidad.** La metodología debe ser fácil de entender y replicar, y debe dejar una base sobre la cual se pueda continuar este proceso y justificar con rigurosidad el MMA de las IGED. 
 
 - **Robustez.** Se refiere a la confiabilidad de la estimación de la distribución de recursos, la cual se sustenta en la evidencia basada en información y datos precisos y fehacientes. De este modo la distribución de recursos es objetiva, basada en metodologías rigurosas que se comuniquen de forma clara y transparente a las IGED. 
-
-> 2 El Monto Máximo Asignable (MMA) se refiere a la cantidad máxima de recursos que pueden recibir las IGED, por el cumplimiento de las metas vinculadas a los compromisos del Tramo 1 y sus indicadores. Representa el incentivo monetario del mecanismo.
 
 <!-- pagina: 159 | impresa: 155 -->
 #### **3. Modelo conceptual y cálculo del MMA por IGED** 
