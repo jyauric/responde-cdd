@@ -268,16 +268,32 @@ with tab_panel:
         rango = st.date_input("Rango de fechas", value=(desde, hasta), min_value=desde, max_value=hasta,
                               format="DD/MM/YYYY", key="f_fechas")
     cols[6].button("Borrar filtros", on_click=_borrar_filtros, width="stretch", type="secondary")
+    # Filtros encadenados: cada desplegable muestra solo las opciones que quedan con los DEMÁS filtros
+    # (más las que ya están marcadas, para poder desmarcarlas).
+    base = df[df["estado"] == "Pendiente por validar"] if st.session_state.get("f_solo_pendientes") else df
+    if isinstance(rango, tuple) and len(rango) == 2:
+        base = base[(base["fecha_dt"].dt.date >= rango[0]) & (base["fecha_dt"].dt.date <= rango[1])]
+    FILTROS = [("destino_corto", "f_dest"), ("indicador", "f_ind"), ("region", "f_reg"), ("iged", "f_iged"),
+               ("canal", "f_canal")]
+    marcadas = {clave: {k.split("::", 1)[1] for k, v in st.session_state.items()
+                        if k.startswith(clave + "::") and v} for _, clave in FILTROS}
+
+    def disponibles(columna: str, clave: str) -> set:
+        d = base
+        for otra_col, otra_clave in FILTROS:
+            if otra_clave != clave and marcadas[otra_clave]:
+                d = d[d[otra_col].astype(str).isin(marcadas[otra_clave])]
+        return set(d[columna].astype(str)) | marcadas[clave]
+
     orden_destino = list(ESPECIALISTAS) + list(CORTO.values())
-    sel_dest = filtro(cols[1], "Especialista / equipo",
-                      [d for d in orden_destino if d in set(df["destino_corto"])], "f_dest")
-    ind_presentes = sorted((i for i in set(df["indicador"]) if i in INDICADORES),
+    disp = disponibles("destino_corto", "f_dest")
+    sel_dest = filtro(cols[1], "Especialista / equipo", [d for d in orden_destino if d in disp], "f_dest")
+    ind_presentes = sorted((i for i in disponibles("indicador", "f_ind") if i in INDICADORES),
                            key=lambda x: [int(n) for n in x.split(".")])
     sel_ind = filtro(cols[2], "Indicador", ind_presentes, "f_ind")
-    sel_reg = filtro(cols[3], "Región", sorted(set(df["region"])), "f_reg")
-    igeds = df[df["region"].isin(sel_reg)] if sel_reg else df
-    sel_iged = filtro(cols[4], "IGED", sorted(set(igeds["iged"])), "f_iged")
-    sel_canal = filtro(cols[5], "Canal", sorted(set(df["canal"])), "f_canal")
+    sel_reg = filtro(cols[3], "Región", sorted(disponibles("region", "f_reg")), "f_reg")
+    sel_iged = filtro(cols[4], "IGED", sorted(disponibles("iged", "f_iged")), "f_iged")
+    sel_canal = filtro(cols[5], "Canal", sorted(disponibles("canal", "f_canal")), "f_canal")
 
     solo_pendientes = controles.checkbox("Ver solo consultas pendientes por validar", key="f_solo_pendientes")
 
