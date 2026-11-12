@@ -20,7 +20,7 @@ Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de
 
 **Josselin Yauri** · Soy economista de la Universidad del Pacífico y actualmente trabajo en la Unidad de Financiamiento por Desempeño del Ministerio de Educación, en la herramienta Compromisos de Desempeño. Conozco de primera mano las consultas que llegan de las IGED, cómo se responden y qué información pública existe para responderlas.
 
-**Cómo cubro cada rol con agentes de IA:** producto y decisiones de dominio (yo: qué responde sola la herramienta, a quién se deriva cada tema, qué se publica); ingeniería con Claude Code como co-founder técnico (ver sección 9); diseño de la app y del panel iterado con Claude Code a partir de mi revisión; ventas: 🔴 POR COMPLETAR.
+**Cómo cubro cada rol con agentes de IA:** producto y decisiones de dominio (yo: qué responde sola la herramienta, a quién se deriva cada tema, qué se publica); ingeniería con Claude Code como co-founder técnico (ver sección 9); diseño de la app y del panel iterado con Claude Code a partir de mi revisión; ventas: yo presento el piloto directamente al equipo y a la coordinación (ya lo mostré en las conversaciones de [`docs/research/`](docs/research/)); con Claude Code preparé el modelo de precios y la estimación del costo por consulta (sección 7); el argumento de venta es el propio panel, que mide cuántas consultas se resuelven al instante y la carga pendiente del equipo.
 
 ## 3. Problema
 
