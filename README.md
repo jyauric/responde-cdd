@@ -4,7 +4,7 @@
 
 > **Respondemos al instante las consultas de las UGEL y DRE/GRE sobre Compromisos de Desempeño, mediante IA que busca en la norma y en las publicaciones web de la herramienta, cita la fuente y deriva al especialista solo lo que no está cubierto.**
 
-**Demo en vivo:** https://responde-cdd.streamlit.app/ · **Video de respaldo:** 🔴 POR COMPLETAR
+**Demo en vivo:** https://responde-cdd.streamlit.app/ · **Video de respaldo:** [ver en Google Drive](https://drive.google.com/file/d/1qRAcilIJN_dbsnkts2SYPJ-wXYZu0dg1/view?usp=sharing)
 
 > ⚠️ Proyecto personal desarrollado para el proyecto final de la Diplomatura de Ciencia de Datos para las Ciencias Sociales y la Gestión Pública (Q-Lab PUCP). **No es un producto oficial de ninguna institución.** Usa solo documentos públicos de gob.pe; las consultas del demo son de ejemplo, los remitentes son ilustrativos y los especialistas, ficticios.
 
