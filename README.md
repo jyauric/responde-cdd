@@ -85,7 +85,7 @@ Medir el volumen real es justamente uno de los primeros resultados del piloto: e
 
 ![Panel de la coordinadora](docs/captura_3_panel.png)
 
-**Arquitectura:**
+**Arquitectura** (también en [`docs/arquitectura.md`](docs/arquitectura.md), con el detalle de cada paso):
 
 ```mermaid
 flowchart LR
